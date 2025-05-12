@@ -1,10 +1,8 @@
 import cv2
 import numpy as np
+import time
 
-wT, hT = 640, 680
-points = np.float32([[110, 208], [wT - 110, 208], [0, hT], [wT, hT]])
-curveList = []
-avgVal = 10
+
 
 
 def blackenEdge(or_frame):
@@ -47,9 +45,6 @@ def warpImg(img, points, width, height, inverse=False):
 
     return cv2.warpPerspective(img, matrix, (width, height))
 
-
-import numpy as np
-import cv2
 
 
 def getHistogram(img, show_histogram=False, min_threshold=0.1, scale=4):
@@ -163,19 +158,57 @@ def processFrame(img, display=1):
     return curve
 
 
-cap = cv2.VideoCapture(r'C:\Users\ibrah\Downloads\DIP Project Videos\PXL_20250325_043754655.TS.mp4')
+
+def processFrameWithFPS(img, display=1, ground_truth_curves=None):
+    start_time = time.time()
+    curve = processFrame(img, display=2)
+    end_time = time.time()
+    if ground_truth_curves is not None:
+        accuracy = evaluateAccuracy(curve, ground_truth_curves)
+        print(f"Accuracy: {accuracy:.2f}%")
+    # Calculate FPS
+    fps = 1 / (end_time - start_time)
+    print(f"FPS: {fps:.2f}")
+
+
+    return curve
+
+def evaluateAccuracy(detected_curve, ground_truth_curve):
+    # Compare detected curve with ground truth
+    if ground_truth_curve is not None:
+        accuracy = 100 - abs(detected_curve - ground_truth_curve)  # Simple accuracy metric
+    else:
+        accuracy = 0  # No ground truth, no accuracy
+    return accuracy
+
+
+def simulateLightingChange(img, brightness_factor=1.5):
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    hsv[..., 2] = hsv[..., 2] * brightness_factor  # Adjust brightness
+    img_bright = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+    return img_bright
+
+wT, hT = 640, 680
+points = np.float32([[110, 208], [wT - 110, 208], [0, hT], [wT, hT]])
+curveList = []
+avgVal = 10
+
+cap = cv2.VideoCapture(r'D:\6th Sem\DIP\project\PXL_20250325_044746327.TS.mp4')
 frameCounter = 0
 
 while True:
     ret, frame = cap.read()
-    if not ret: break
+    if not ret:
+        break
 
     frameCounter += 1
     if frameCounter == cap.get(cv2.CAP_PROP_FRAME_COUNT):
         cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
         frameCounter = 0
 
-    processFrame(frame, display=2)
+    # processFrame(frame, display=2)
+    # frame = simulateLightingChange(frame, brightness_factor=2)  # Simulate brighter lighting
+    processFrameWithFPS(frame, display=2,ground_truth_curves=15)
 
     if cv2.waitKey(1) == ord('q'):
         break
